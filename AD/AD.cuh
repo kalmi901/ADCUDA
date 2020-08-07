@@ -189,7 +189,7 @@ inline __host__ __device__ Dual<NUMVAR, Precision> sqrt(const Dual<NUMVAR, Preci
 {
 	Dual<NUMVAR, Precision> c = Dual<NUMVAR, Precision>((Precision)0.0);
 	Precision Temp = sqrt(a.real);
-	c.real = sqrtReal;
+	c.real = Temp;
 	Temp = 1.0 / Temp;
 	for (size_t i = 0; i < NUMVAR; i++)
 	{

@@ -13,6 +13,8 @@ public:
 	Precision dual[NUMVAR] {};
 
 	// constructor
+	__host__ __device__ Dual() {}
+
 	__host__ __device__ Dual(Precision value, int i)
 		: real(value)	{dual[i] = (Precision)1.0;	}
 
@@ -41,12 +43,14 @@ inline __host__ __device__ Dual<NUMVAR, Precision> operator + (const Dual<NUMVAR
 template<size_t NUMVAR, class Precision, class OtherPrecision>
 inline __host__ __device__ Dual<NUMVAR, Precision> operator + (const Dual<NUMVAR, Precision> &a, const OtherPrecision &b)
 {
-	Dual<NUMVAR, Precision> c = Dual<NUMVAR, Precision>((Precision)0.0);
-	c.real = a.real + (Precision)b;
+	//Dual<NUMVAR, Precision> c = Dual<NUMVAR, Precision>((Precision)0.0);
+	Dual<NUMVAR, Precision> c{ a };
+	c.real += (Precision)b;
+	/*c.real = a.real + (Precision)b;
 	for (size_t i = 0; i < NUMVAR; i++)
 	{
 		c.dual[i] = a.dual[i];
-	}
+	}*/
 	return c;
 }
 
@@ -75,12 +79,14 @@ inline __host__ __device__ Dual<NUMVAR, Precision> operator - (const Dual<NUMVAR
 template<size_t NUMVAR, class Precision, class OtherPrecision>
 inline __host__ __device__ Dual<NUMVAR, Precision> operator - (const Dual<NUMVAR, Precision> &a, const OtherPrecision &b)
 {
-	Dual<NUMVAR, Precision> c = Dual<NUMVAR, Precision>((Precision)0.0);
-	c.real = a.real - (Precision)b;
+	//Dual<NUMVAR, Precision> c = Dual<NUMVAR, Precision>((Precision)0.0);
+	Dual<NUMVAR, Precision> c{ a };
+	c.real -= (Precision)b;
+	/*c.real = a.real - (Precision)b;
 	for (size_t i = 0; i < NUMVAR; i++)
 	{
 		c.dual[i] = a.dual[i];
-	}
+	}*/
 	return c;
 }
 
@@ -151,10 +157,11 @@ template<size_t NUMVAR, class Precision, class OtherPrecision>
 inline __host__ __device__ Dual<NUMVAR, Precision> operator / (const Dual<NUMVAR, Precision> &a, const OtherPrecision &b)
 {
 	Dual<NUMVAR, Precision> c = Dual<NUMVAR, Precision>((Precision)0.0);
-	c.real = a.real / (Precision)b;
+	Precision rb = (Precision)1.0 / b;
+	c.real = a.real * rb;
 	for (size_t i = 0; i < NUMVAR; i++)
 	{
-		c.dual[i] = a.dual[i] / (Precision)b;
+		c.dual[i] = a.dual[i] * rb;
 	}
 	return c;
 }
@@ -163,19 +170,125 @@ inline __host__ __device__ Dual<NUMVAR, Precision> operator / (const Dual<NUMVAR
 template<size_t NUMVAR, class Precision, class OtherPrecision>
 inline __host__ __device__ Dual<NUMVAR, Precision> operator / (const OtherPrecision &a, const Dual<NUMVAR, Precision> &b)
 {
-	//Dual<NUMVAR, Precision> c = Dual<NUMVAR, Precision>((Precision)a);
+	Dual<NUMVAR, Precision> c = Dual<NUMVAR, Precision>((Precision)a);
 	//return c / b;
-	return Dual<NUMVAR, Precision>((Precision)a) / b;
+	//return Dual<NUMVAR, Precision>((Precision)a) / b;
+	c.real = (Precision)a / b.real;
+	Precision rD = (Precision)1.0 / (b.real * b.real);
+	for (size_t i = 0; i < NUMVAR; i++)
+	{
+		c.dual[i] = -a * b.dual[i] * rD;
+	}
+	return c;
 }
 
 // ------------------ Functions -------------------------
 
-// pow(), sqrt()
-// log(), log10(), exp()
-// sin(), cos(), tan(), ctan()
+template<size_t NUMVAR, class Precision>
+inline __host__ __device__ Dual<NUMVAR, Precision> sqrt(const Dual<NUMVAR, Precision> &a)
+{
+	Dual<NUMVAR, Precision> c = Dual<NUMVAR, Precision>((Precision)0.0);
+	Precision Temp = sqrt(a.real);
+	c.real = sqrtReal;
+	Temp = 1.0 / Temp;
+	for (size_t i = 0; i < NUMVAR; i++)
+	{
+		c.dual[i] = 0.5 * a.dual[i] * Temp;
+	}
+	return c;
+}
 
+template<size_t NUMVAR, class Precision>
+inline __host__ __device__ Dual<NUMVAR, Precision> pow(const Dual<NUMVAR, Precision> &a, const Precision &b)
+{
+	Dual<NUMVAR, Precision> c = Dual<NUMVAR, Precision>((Precision)0.0);
+	c.real = pow(a.real, b);
+	for (size_t i = 0; i < NUMVAR; i++)
+	{
+		c.dual[i] = b * a.dual[i] * pow(a.real, b - 1.0);
+	}
+	return c;
+}
 
-// Trigonometric functions
+template<size_t NUMVAR, class Precision>
+inline __host__ __device__ Dual<NUMVAR, Precision> pow(const Precision &a, const Dual<NUMVAR, Precision> &b)
+{
+	Dual<NUMVAR, Precision> c = Dual<NUMVAR, Precision>((Precision)0.0);
+	c.real = pow(a, b.real);
+	for (size_t i = 0; i < NUMVAR; i++)
+	{	// Avoid log(0)
+		c.dual[i] = a == 0 ? 0 : b.dual[i] * c.real * log(a);
+	}
+	return c;
+}
+
+template<size_t NUMVAR, class Precision>
+inline __host__ __device__ Dual<NUMVAR, Precision> pow(const Dual<NUMVAR, Precision> &a, const Dual<NUMVAR, Precision> &b)
+{
+	Dual<NUMVAR, Precision> c = Dual<NUMVAR, Precision>((Precision)0.0);
+	c.real = pow(a.real, b.real);
+	for (size_t i = 0; i < NUMVAR; i++)
+	{	// Avoid log(0)
+		c.dual[i] = a.real == 0 ? 0 : b.real * a.dual[i] * pow(a.real, b.real - 1.0) + b.dual[i] * c.real * log(a.real);
+	}
+}
+
+template<size_t NUMVAR, class Precision>
+inline __host__ __device__ Dual<NUMVAR, Precision> log(const Dual<NUMVAR, Precision> &a)
+{
+	Dual<NUMVAR, Precision> c = Dual<NUMVAR, Precision>((Precision)0.0);
+	c.real = log(a.real);
+	Precision Temp = (Precision)1.0 / a.real;
+	for (size_t i = 0; i < NUMVAR; i++)
+	{
+		c.dual[i] = a.dual[i] * Temp;
+	}
+	return c;
+}
+
+template<size_t NUMVAR, class Precision>
+inline __host__ __device__ Dual<NUMVAR, Precision> log10(const Dual<NUMVAR, Precision> &a)
+{
+	Dual<NUMVAR, Precision> c = Dual<NUMVAR, Precision>((Precision)0.0);
+	c.real = log10(a.real);
+	Precision Temp = (Precision)1.0 / (a.real * log(10.0));
+	{
+		for (size_t i = 0; i < NUMVAR; i++)
+		{
+			c.dual[i] * a.dual[i] * Temp;
+		}
+	}
+	return c;
+}
+
+template<size_t NUMVAR, class Precision>
+inline __host__ __device__ Dual<NUMVAR, Precision> log2(const Dual<NUMVAR, Precision> &a)
+{
+	Dual<NUMVAR, Precision> c = Dual<NUMVAR, Precision>((Precision)0.0);
+	c.real = log10(a.real);
+	Precision Temp = (Precision)1.0 / (a.real * log(2.0));
+	{
+		for (size_t i = 0; i < NUMVAR; i++)
+		{
+			c.dual[i] * a.dual[i] * Temp;
+		}
+	}
+	return c;
+}
+
+template<size_t NUMVAR, class Precision>
+inline __host__ __device__ Dual<NUMVAR, Precision> exp(const Dual<NUMVAR, Precision> &a)
+{
+	Dual<NUMVAR, Precision> c = Dual<NUMVAR, Precision>((Precision)0.0);
+	c.real = exp(a.real);
+	for (size_t i = 0; i < NUMVAR; i++)
+	{
+		c.dual[i] = a.dual[i] * c.real;
+	}
+	return c;
+}
+
+// ---------------------- Trigonometric functions ----------------------
 
 template<size_t NUMVAR, class Precision>
 inline __host__ __device__ Dual<NUMVAR, Precision> sin(const Dual<NUMVAR, Precision> &a)
@@ -188,6 +301,18 @@ inline __host__ __device__ Dual<NUMVAR, Precision> sin(const Dual<NUMVAR, Precis
 		c.dual[i] = a.dual[i] * Cos;
 	}
 	return c;
+}
+
+template<size_t NUMVAR, class Precision>
+inline __host__ __device__ Dual<NUMVAR, Precision> asin(const Dual<NUMVAR, Precision> &a)
+{
+	Dual<NUMVAR, Precision> c = Dual<NUMVAR, Precision>((Precision)0.0);
+	c.real = asin = (a.real);
+	Precision Temp = (Precision)1.0 / sqrt(1 - a.real*a.real);
+	for (size_t i = 0; i < NUMVAR; i++)
+	{
+		c.dual[i] = a.dual[i] * Temp;
+	}
 }
 
 template<size_t NUMVAR, class Precision>
@@ -204,6 +329,18 @@ inline __host__ __device__ Dual<NUMVAR, Precision> cos(const Dual<NUMVAR, Precis
 }
 
 template<size_t NUMVAR, class Precision>
+inline __host__ __device__ Dual<NUMVAR, Precision> acos(const Dual<NUMVAR, Precision> &a)
+{
+	Dual<NUMVAR, Precision> c = Dual<NUMVAR, Precision>((Precision)0.0);
+	c.real = acos(a.real);
+	Precision Temp = -(Precision)1.0 / sqrt(1 - a.real*a.real);
+	for (size_t i = 0; i < NUMVAR; i++)
+	{
+		c.dual[i] = a.dual[i] * Temp;
+	}
+}
+
+template<size_t NUMVAR, class Precision>
 inline __host__ __device__ Dual<NUMVAR, Precision> tan(const Dual<NUMVAR, Precision> &a)
 {
 	Dual<NUMVAR, Precision> c = Dual<NUMVAR, Precision>((Precision)0.0);
@@ -216,6 +353,17 @@ inline __host__ __device__ Dual<NUMVAR, Precision> tan(const Dual<NUMVAR, Precis
 	return c;
 }
 
-// asin(), acos(), atan(), actan()
+template<size_t NUMVAR, class Precision>
+inline __host__ __device__ Dual<NUMVAR, Precision> atan(const Dual<NUMVAR, Precision> &a)
+{
+	Dual<NUMVAR, Precision> c = Dual<NUMVAR, Precision>((Precision)0.0);
+	c.real = atan(a.real);
+	Precision Temp = (Precision)1.0 / (1.0 + a.real * a.real);
+	for (size_t i = 0; i < NUMVAR; i++)
+	{
+		c.dual[i] = a.dual[i] * Temp;
+	}
+	return c;
+}
 
 #endif

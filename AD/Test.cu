@@ -24,10 +24,10 @@ __host__ __device__ void Print(const Dual<NUMVAR, Precision> &a)
 {
 	//printf("Ez a print lefutott \n");
 
-	printf(" real: %.3f \n", a.real);
+	printf(" real: %.3f \n", (float)a.real);
 	for (int i = 0; i < N; i++)
 	{
-		printf(" dual[%d]: %.3f \n", i, a.dual[i]);
+		printf(" dual[%d]: %.3f \n", i, (float)a.dual[i]);
 	}
 	printf("\n");
 }
@@ -46,24 +46,24 @@ __host__ __device__ void TryVariableInitialization()
 	// Variable initialized with int
 	Dual<N, double> a1 = { 2 };
 	Dual<N, float>	a2 = { 2 };
-	//Dual<N, int>	a3 = { 2 };			// Integerre nem mûködik...
+	Dual<N, int>	a3 = { 2 };
 	printf("Dual double (a1)\n");
 	Print(a1);
 	printf("Dual float (a2) \n");
 	Print(a2);
-	//printf("Dual int (a3)\n");
-	//Print(a3);
+	printf("Dual int (a3)\n");
+	Print(a3);
 
 	Dual<N, double> b1 = { 1, 0 };
 	Dual<N, float>	b2 = { 2, 1 };
-	//Dual<N, int>	b3 = { 3, 2 };
+	Dual<N, int>	b3 = { 3, 2 };
 
 	printf("Dual double (b1) \n");
 	Print(b1);
 	printf("Dual float (b2) \n");
 	Print(b2);
-	//printf("Dual int (b3) \n");
-	//Print(b3);
+	printf("Dual int (b3) \n");
+	Print(b3);
 }
 
 __host__ __device__ void TryAddition()
@@ -236,23 +236,23 @@ __host__ __device__ void TryDivision()
 
 	printf("Dual/double: a1 / d1 \n");
 	Print(a1/d1);
-	printf("Dual/double: d1 / a1 \n");
+	printf("double/Dual: d1 / a1 \n");
 	Print(d1/a1);
 
 	printf("Dual/float: a1 / d2 \n");
 	Print(a1/d2);
-	printf("Dual/float: d2 / a1 \n");
+	printf("float/Dual: d2 / a1 \n");
 	Print(d2/a1);
 
 	printf("Dual/int: a1 / d3 \n");
 	Print(a1/d3);
-	printf("Dual/int: d3 / a1 \n");
+	printf("int/Dual: d3 / a1 \n");
 	Print(d3/a1);
 }
 
 __global__ void TryDualNumbers()
 {
-	//TryVariableInitialization();
+	TryVariableInitialization();
 	TryAddition();
 	TrySubtraction();
 	TryMultiplication();
@@ -261,7 +261,7 @@ __global__ void TryDualNumbers()
 
 int main()
 {
-	//TryVariableInitialization();
+	TryVariableInitialization();
 	TryAddition();
 	TrySubtraction();
 	TryMultiplication();
